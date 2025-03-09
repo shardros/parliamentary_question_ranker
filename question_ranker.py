@@ -8,11 +8,17 @@ from pydantic import BaseModel
 import time
 import csv
 import os  # Import os module for checkpoint file operations
-import asyncio  # Import asyncio for async calls
+import threading  # Import threading for threading
+from concurrent.futures import ThreadPoolExecutor  # Import ThreadPoolExecutor for thread pool
 from scipy.stats import percentileofscore  # Import scipy for percentile calculation
 from api_key import GEMINI_API_KEY
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+
+# --------------------------
+# Global lock for thread safety and print statements
+qa_pairs_lock = threading.Lock() # Lock for qa_pairs access
+print_lock = threading.Lock() # Lock for print statements
 
 # --------------------------
 # Get parlimentary questions
@@ -34,10 +40,12 @@ def save_question_locally(question_id, question_data):
     try:
         with open(filepath, 'w') as f:
             json.dump(question_data, f, indent=4)
-        print(f"Question ID {question_id} saved locally to {filepath}")
+        with print_lock:
+            print(f"Question ID {question_id} saved locally to {filepath}")
         return True
     except Exception as e:
-        print(f"Error saving question ID {question_id} locally: {e}")
+        with print_lock:
+            print(f"Error saving question ID {question_id} locally: {e}")
         return False
 
 def load_question_locally(question_id):
@@ -47,13 +55,16 @@ def load_question_locally(question_id):
         try:
             with open(filepath, 'r') as f:
                 question_data = json.load(f)
-            print(f"Question ID {question_id} loaded from local file {filepath}")
+            with print_lock:
+                print(f"Question ID {question_id} loaded from local file {filepath}")
             return question_data
         except json.JSONDecodeError as e:
-            print(f"JSON Decode Error loading local file for ID {question_id}: {e}")
+            with print_lock:
+                print(f"JSON Decode Error loading local file for ID {question_id}: {e}")
             return None
         except Exception as e:
-            print(f"Error loading local file for question ID {question_id}: {e}")
+            with print_lock:
+                print(f"Error loading local file for question ID {question_id}: {e}")
             return None
     return None
 
@@ -76,10 +87,12 @@ def fetch_question_by_id(question_id):
             save_question_locally(question_id, question_data) # Save question locally
             return question_data
         except json.JSONDecodeError as e:
-            print(f"JSON Decode Error (ID {question_id}): {e}")
+            with print_lock:
+                print(f"JSON Decode Error (ID {question_id}): {e}")
             return None
     else:
-        print(f"API Error (ID {question_id}): {response.status_code}")
+        with print_lock:
+            print(f"API Error (ID {question_id}): {response.status_code}")
         return None
 
 
@@ -100,10 +113,12 @@ def fetch_answered_questions_ids_last_day(date_str_from, date_str_to, take=20):
             questions_data = json.loads(questions_json_string)
             return [item['value']['id'] for item in questions_data['results']]
         except json.JSONDecodeError as e:
-            print(f"JSON Decode Error (ID list): {e}")
+            with print_lock:
+                print(f"JSON Decode Error (ID list): {e}")
             return []
     else:
-        print(f"API Error (ID list): {response.status_code}")
+        with print_lock:
+            print(f"API Error (ID list): {response.status_code}")
         return []
 
 
@@ -146,9 +161,11 @@ def save_checkpoint(qa_pairs, comparison_count, filename=CHECKPOINT_FILE):
     try:
         with open(filename, 'w') as f:
             json.dump(checkpoint_data, f, indent=4)
-        print(f"Checkpoint saved to {filename}")
+        with print_lock:
+            print(f"Checkpoint saved to {filename}")
     except Exception as e:
-        print(f"Error saving checkpoint: {e}")
+        with print_lock:
+            print(f"Error saving checkpoint: {e}")
 
 def load_checkpoint(filename=CHECKPOINT_FILE):
     """Load state from a checkpoint file if it exists."""
@@ -170,13 +187,16 @@ def load_checkpoint(filename=CHECKPOINT_FILE):
                 } for qa_pair in checkpoint_data['qa_pairs']
             ]
             comparison_count_loaded = checkpoint_data.get("comparison_count", 0) # Default to 0 if not found for backward compatibility
-            print(f"Checkpoint loaded from {filename}, resuming from comparison {comparison_count_loaded}")
+            with print_lock:
+                print(f"Checkpoint loaded from {filename}, resuming from comparison {comparison_count_loaded}")
             return qa_pairs_loaded, comparison_count_loaded
         except Exception as e:
-            print(f"Error loading checkpoint: {e}")
+            with print_lock:
+                print(f"Error loading checkpoint: {e}")
             return None, 0
     else:
-        print("No checkpoint file found, starting from scratch.")
+        with print_lock:
+            print("No checkpoint file found, starting from scratch.")
         return None, 0
 
 
@@ -185,24 +205,28 @@ def load_checkpoint(filename=CHECKPOINT_FILE):
 
 def print_ranked_questions_and_answers(ranked_qa_pairs_unattended): # Changed to ranked_qa_pairs_unattended
     """Print ranked question and answer pairs for unattended issues (most important, least attention)."""
-    print("--- Ranked Question & Answer Pairs (Most Important, Least Attention - Last in List) ---") # Updated title
-    for rank, qa_pair in enumerate(ranked_qa_pairs_unattended, start=1): # Changed to ranked_qa_pairs_unattended
-        print(f"Rank {rank}: UIN: {qa_pair['uin']}, Heading: {qa_pair['heading']}, Unattended Score: {qa_pair['unattended_score']:.2f} (Importance Pct Rank: {qa_pair['percentile_importance_rank']:.2f}, Attention Pct Rank: {qa_pair['percentile_attention_rank']:.2f})") # Updated print statement to include percentile ranks and unattended score
-        print(f"Question: {qa_pair['question_text']}")
-        print(f"Answer: {qa_pair['answer_text']}")
-        print("-" * 50)
+    with print_lock:
+        print("--- Ranked Question & Answer Pairs (Most Important, Least Attention - Last in List) ---") # Updated title
+        for rank, qa_pair in enumerate(ranked_qa_pairs_unattended, start=1): # Changed to ranked_qa_pairs_unattended
+            print(f"Rank {rank}: UIN: {qa_pair['uin']}, Heading: {qa_pair['heading']}, Unattended Score: {qa_pair['unattended_score']:.2f} (Importance Pct Rank: {qa_pair['percentile_importance_rank']:.2f}, Attention Pct Rank: {qa_pair['percentile_attention_rank']:.2f})") # Updated print statement to include percentile ranks and unattended score
+            print(f"Question: {qa_pair['question_text']}")
+            print(f"Answer: {qa_pair['answer_text']}")
+            print("-" * 50)
 
 
 
-async def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
+def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
     """
-    Asynchronously evaluates which of the two question/answer pairs is more important and which is receiving more attention in Westminster.
+    Evaluates which of the two question/answer pairs is more important and which is receiving more attention in Westminster.
     Uses a single LLM call to determine both importance and attention.
     """
-    print(f"Comparison {comparison_index + 1}: Comparing for Importance and Attention:") # Added comparison index
-    print(f"QA Pair 1: UIN: {qa_pair1['uin']}, Heading: {qa_pair1['heading']}")
-    print(f"QA Pair 2: UIN: {qa_pair2['uin']}, Heading: {qa_pair2['heading']}")
+    with print_lock:
+        print(f"Comparison {comparison_index + 1}: Comparing for Importance and Attention:") # Added comparison index
+        print(f"QA Pair 1: UIN: {qa_pair1['uin']}, Heading: {qa_pair1['heading']}")
+        print(f"QA Pair 2: UIN: {qa_pair2['uin']}, Heading: {qa_pair2['heading']}")
 
+        # Print statement before LLM call
+        print(f"Calling LLM for comparison {comparison_index + 1} - Headings: '{qa_pair1['heading']}' vs '{qa_pair2['heading']}'...")
 
     # Make sure to not use up all of our input tokens
     MAX_LENGTH = 10_000
@@ -217,15 +241,15 @@ async def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
         explanation_attention: str
         attention_q_num: int
 
-    contents = f"""For the following two issues debated in westminster, judge which is more important for the UK and which is receiving more attention in Westminster.
+    contents = f"""These are parliamentary questions
 
     For Importance: Which is more important for the UK?
     explanation_importance: The explaination of which is more important 75 words max.
     important_q_num: The number either 1 or 2 which question is more important
 
-    For Attention: Which issue is receiving more attention in Westminster?
-    explanation_attention: The explaination of which is receiving more attention 75 words max.
-    attention_q_num: The number either 1 or 2 which question is receiving more attention
+    For Attention: Which issue is not receiving enough focus in Westminster?
+    explanation_attention: The explaination of which isn't receiving enough attention 75 words max.
+    attention_q_num: The number either 1 or 2 which question is receiving **enough** focus
 
     --- 1 ---
     {qa_pair1['heading']}
@@ -237,35 +261,45 @@ async def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
     {qa_pair2['answer_text']}
     """
 
-    response = await gemini_client.models.generate_content_async( # Made async
+    response = gemini_client.models.generate_content( # Made synchronous
         model='gemini-2.0-flash-lite',
         contents=contents,
         config={
             'response_mime_type': 'application/json',
             'response_schema': ResponseFormat,
-            'system_instruction': 'You are judging two issues debated in westminster. \
-            For each issue you are judging (1) which is more important for the UK and (2) which is receiving more attention in westminster. Answer in JSON'
+            'system_instruction': 'Judge 2 UK Westminster debates: (1) importance, (2) under-focus. JSON.'
         }
     )
-    print(response.text)
+    with print_lock:
+        print(response.text)
     if response.parsed.important_q_num == 1:
         winner_importance = qa_pair1
+        loser_importance = qa_pair2
     elif response.parsed.important_q_num == 2:
         winner_importance = qa_pair2
+        loser_importance = qa_pair1
     else:
-        print("ERROR DECODING IMPORTANCE FROM LLM")
+        with print_lock:
+            print("ERROR DECODING IMPORTANCE FROM LLM")
         return None, None
 
     if response.parsed.attention_q_num == 1:
         winner_attention = qa_pair1
+        loser_attention = qa_pair2
     elif response.parsed.attention_q_num == 2:
         winner_attention = qa_pair2
+        loser_attention = qa_pair1
     else:
-        print("ERROR DECODING ATTENTION FROM LLM")
+        with print_lock:
+            print("ERROR DECODING ATTENTION FROM LLM")
         return None, None
 
-    print(f"Chosen as more important: UIN: {winner_importance['uin']}, Heading: {winner_importance['heading']}")
-    print(f"Chosen as more attention grabbing: UIN: {winner_attention['uin']}, Heading: {winner_attention['heading']}")
+    # Print statements after LLM call, showing selection outcome
+    with print_lock:
+        print(f"LLM Selection - Comparison {comparison_index + 1}:")
+        print(f" More Important:   UIN: {winner_importance['uin']}, Heading: {winner_importance['heading']}  (vs UIN: {loser_importance['uin']})")
+        print(f" More Attention Grabbing: UIN: {winner_attention['uin']}, Heading: {winner_attention['heading']} (vs UIN: {loser_attention['uin']})")
+
     return winner_importance, winner_attention
 
 
@@ -280,26 +314,27 @@ def update_elo_ratings(qa_pair1, qa_pair2, winner_importance, winner_attention):
     probability_pair1_wins_importance = 1 / (1 + 10**((rating2_importance - rating1_importance) / 400))
     probability_pair2_wins_importance = 1 - probability_pair1_wins_importance
 
-    if winner_importance['id'] == qa_pair1['id']:  # Pair 1 wins on importance
-        qa_pair1['elo_importance_rating'] = rating1_importance + k_factor * (1 - probability_pair1_wins_importance)
-        qa_pair2['elo_importance_rating'] = rating2_importance + k_factor * (0 - probability_pair2_wins_importance)
-    else:  # Pair 2 wins on importance
-        qa_pair1['elo_importance_rating'] = rating1_importance + k_factor * (0 - probability_pair1_wins_importance)
-        qa_pair2['elo_importance_rating'] = rating2_importance + k_factor * (1 - probability_pair2_wins_importance)
+    with qa_pairs_lock: # Lock for thread safety
+        if winner_importance['id'] == qa_pair1['id']:  # Pair 1 wins on importance
+            qa_pair1['elo_importance_rating'] = rating1_importance + k_factor * (1 - probability_pair1_wins_importance)
+            qa_pair2['elo_importance_rating'] = rating2_importance + k_factor * (0 - probability_pair2_wins_importance)
+        else:  # Pair 2 wins on importance
+            qa_pair1['elo_importance_rating'] = rating1_importance + k_factor * (0 - probability_pair1_wins_importance)
+            qa_pair2['elo_importance_rating'] = rating2_importance + k_factor * (1 - probability_pair2_wins_importance)
 
-    # Update Attention Elo Ratings
-    rating1_attention = qa_pair1['elo_attention_rating']
-    rating2_attention = qa_pair2['elo_attention_rating']
+        # Update Attention Elo Ratings
+        rating1_attention = qa_pair1['elo_attention_rating']
+        rating2_attention = qa_pair2['elo_attention_rating']
 
-    probability_pair1_wins_attention = 1 / (1 + 10**((rating2_attention - rating1_attention) / 400))
-    probability_pair2_wins_attention = 1 - probability_pair1_wins_attention
+        probability_pair1_wins_attention = 1 / (1 + 10**((rating2_attention - rating1_attention) / 400))
+        probability_pair2_wins_attention = 1 - probability_pair1_wins_attention
 
-    if winner_attention['id'] == qa_pair1['id']:  # Pair 1 wins on attention
-        qa_pair1['elo_attention_rating'] = rating1_attention + k_factor * (1 - probability_pair1_wins_attention)
-        qa_pair2['elo_attention_rating'] = rating2_attention + k_factor * (0 - probability_pair2_wins_attention)
-    else:  # Pair 2 wins on attention
-        qa_pair1['elo_attention_rating'] = rating1_attention + k_factor * (0 - probability_pair1_wins_attention)
-        qa_pair2['elo_attention_rating'] = rating2_attention + k_factor * (1 - probability_pair2_wins_attention)
+        if winner_attention['id'] == qa_pair1['id']:  # Pair 1 wins on attention
+            qa_pair1['elo_attention_rating'] = rating1_attention + k_factor * (1 - probability_pair1_wins_attention)
+            qa_pair2['elo_attention_rating'] = rating2_attention + k_factor * (0 - probability_pair2_wins_attention)
+        else:  # Pair 2 wins on attention
+            qa_pair1['elo_attention_rating'] = rating1_attention + k_factor * (0 - probability_pair1_wins_attention)
+            qa_pair2['elo_attention_rating'] = rating2_attention + k_factor * (1 - probability_pair2_wins_attention)
 
 
 def initialize_elo_ratings(qa_pairs, initial_rating=1500):
@@ -356,9 +391,11 @@ def save_ranked_qa_to_csv(ranked_qa_pairs_unattended, filename=None): # Changed 
                     'unattended_score': qa_pair['unattended_score'], # Save unattended score
                     'question_id': qa_pair['id']
                 })
-        print(f"Successfully saved ranked Q&A pairs to {filename}")
+        with print_lock:
+            print(f"Successfully saved ranked Q&A pairs to {filename}")
     except Exception as e:
-        print(f"Error saving to CSV: {str(e)}")
+        with print_lock:
+            print(f"Error saving to CSV: {str(e)}")
 
 
 
@@ -420,8 +457,8 @@ def select_elo_based_pair(qa_pairs, comparison_count, num_comparisons):
 
 
 
-async def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons=50, batch_size=20):  # Added num_comparisons and batch_size
-    """Fetch, rank using Elo for importance and attention, and print Q&A for answered questions in the last day, using async LLM calls in batches."""
+def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons=50, batch_size=20):  # Added num_comparisons and batch_size
+    """Fetch, rank using Elo for importance and attention, and print Q&A for answered questions in the last day, using threaded LLM calls in batches."""
     today = date.today()
     n_days = 30
     end_date = today - timedelta(days=1)
@@ -432,18 +469,21 @@ async def get_answered_questions_last_day_elo_ranked(num_questions=20, num_compa
     # Load checkpoint if exists
     qa_pairs, comparison_count_start = load_checkpoint()
     if qa_pairs:
-        print("Resuming from checkpoint...")
+        with print_lock:
+            print("Resuming from checkpoint...")
     else:
         comparison_count_start = 0
         question_ids = fetch_answered_questions_ids_last_day(start_date_str, end_date_str, take=num_questions)
 
         if not question_ids:
             date_range_str = f"{start_date_str} and {end_date_str}"
-            print(f"No question IDs found for questions answered between {date_range_str}.")
+            with print_lock:
+                print(f"No question IDs found for questions answered between {date_range_str}.")
             return
 
         qa_pairs = []
-        print(f"Fetching details for {len(question_ids)} questions...")
+        with print_lock:
+            print(f"Fetching details for {len(question_ids)} questions...")
         total_questions = len(question_ids)
         for i, question_id in enumerate(question_ids): # Added enumerate for progress bar
             question_data = fetch_question_by_id(question_id)
@@ -452,42 +492,48 @@ async def get_answered_questions_last_day_elo_ranked(num_questions=20, num_compa
                 if qa_pair:
                     qa_pairs.append(qa_pair)
             else:
-                print(f"Failed to fetch full data for question ID: {question_id}")
+                with print_lock:
+                    print(f"Failed to fetch full data for question ID: {question_id}")
 
             # Progress bar implementation
             progress = (i + 1) / total_questions * 100
-            print(f"Downloading questions: {progress:.2f}% ({i + 1}/{total_questions})", end='\r') # \r to overwrite the line
+            with print_lock:
+                print(f"Downloading questions: {progress:.2f}% ({i + 1}/{total_questions})", end='\r') # \r to overwrite the line
 
-        print("\n") # New line after progress bar completes
+        with print_lock:
+            print("\n") # New line after progress bar completes
 
         if not qa_pairs:
-            print("No valid question/answer pairs fetched.")
+            with print_lock:
+                print("No valid question/answer pairs fetched.")
             return
 
         initialize_elo_ratings(qa_pairs)  # Initialize Elo ratings for importance and attention
         save_checkpoint(qa_pairs, comparison_count_start) # Save initial state after fetching and initializing
 
-    print(f"Performing {num_comparisons} comparisons in batches of {batch_size} to rank importance and attention...")  # Indicate comparisons
+    with print_lock:
+        print(f"Performing {num_comparisons} comparisons in batches of {batch_size} to rank importance and attention...")  # Indicate comparisons
 
-    comparison_tasks = [] # List to hold async tasks
+    comparison_tasks = [] # List to hold thread tasks
+    with ThreadPoolExecutor(max_workers=batch_size) as executor: # Use ThreadPoolExecutor
+        for comparison_count in range(comparison_count_start, num_comparisons): # Iterate through comparisons and track count
+            pair1, pair2 = select_elo_based_pair(qa_pairs, comparison_count, num_comparisons) # Select pair based on Elo
 
-    for comparison_count in range(comparison_count_start, num_comparisons): # Iterate through comparisons and track count
-        pair1, pair2 = select_elo_based_pair(qa_pairs, comparison_count, num_comparisons) # Select pair based on Elo
+            if pair1 is None or pair2 is None: # No more pairs to compare
+                with print_lock:
+                    print("Not enough pairs left to compare.")
+                break # Exit loop if no pairs are available
 
-        if pair1 is None or pair2 is None: # No more pairs to compare
-            print("Not enough pairs left to compare.")
-            break # Exit loop if no pairs are available
+            comparison_tasks.append(executor.submit(eval_importance_attention, pair1, pair2, comparison_count)) # Submit task to thread pool
 
-        comparison_tasks.append(eval_importance_attention(pair1, pair2, comparison_count)) # Append async task
-
-        if len(comparison_tasks) >= batch_size or comparison_count == num_comparisons - 1: # Process batch or last comparison
-            evaluation_results = await asyncio.gather(*comparison_tasks) # Run batch of tasks concurrently
-            for task_index, (winner_pair_importance, winner_pair_attention) in enumerate(evaluation_results): # Process results
-                pair1_batch, pair2_batch = select_elo_based_pair(qa_pairs, comparison_count_start + task_index, num_comparisons) # Re-select pairs - simplification, see comment in function
-                if pair1_batch and pair2_batch and winner_pair_importance and winner_pair_attention: # Check pairs are valid before updating
-                    update_elo_ratings(pair1_batch, pair2_batch, winner_pair_importance, winner_pair_attention)  # Update Elo ratings for both
-            comparison_tasks = [] # Clear tasks for next batch
-            save_checkpoint(qa_pairs, comparison_count + 1) # Save checkpoint after each batch
+            if len(comparison_tasks) >= batch_size or comparison_count == num_comparisons - 1: # Process batch or last comparison
+                evaluation_results = [task.result() for task in comparison_tasks] # Get results from threads
+                for task_index, (winner_pair_importance, winner_pair_attention) in enumerate(evaluation_results): # Process results
+                    pair1_batch, pair2_batch = select_elo_based_pair(qa_pairs, comparison_count_start + task_index, num_comparisons) # Re-select pairs - simplification, see comment in function
+                    if pair1_batch and pair2_batch and winner_pair_importance and winner_pair_attention: # Check pairs are valid before updating
+                        update_elo_ratings(pair1_batch, pair2_batch, winner_pair_importance, winner_pair_attention)  # Update Elo ratings for both
+                comparison_tasks = [] # Clear tasks for next batch
+                save_checkpoint(qa_pairs, comparison_count + 1) # Save checkpoint after each batch
 
     calculate_percentile_ranks(qa_pairs) # Calculate percentile ranks for all QA pairs
     calculate_unattended_score(qa_pairs) # Calculate unattended score
@@ -501,8 +547,9 @@ async def get_answered_questions_last_day_elo_ranked(num_questions=20, num_compa
     # Clean up checkpoint file after successful run
     if os.path.exists(CHECKPOINT_FILE):
         os.remove(CHECKPOINT_FILE)
-        print(f"Checkpoint file {CHECKPOINT_FILE} removed.")
+        with print_lock:
+            print(f"Checkpoint file {CHECKPOINT_FILE} removed.")
 
 
 if __name__ == "__main__":
-    asyncio.run(get_answered_questions_last_day_elo_ranked(num_questions=1000, num_comparisons=5000, batch_size=100))  # Adjusted to pass num_comparisons and batch_size
+    get_answered_questions_last_day_elo_ranked(num_questions=1000, num_comparisons=5000, batch_size=5)  # Adjusted to pass num_comparisons and batch_size
