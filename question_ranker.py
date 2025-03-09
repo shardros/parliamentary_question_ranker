@@ -19,14 +19,61 @@ gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 requests_cache.install_cache('parliament_api_cache', expire_after=None)
 
+LOCAL_QUESTIONS_DIR = "parliament_questions_local"
+
+def ensure_local_questions_dir_exists():
+    """Ensure the local questions directory exists."""
+    if not os.path.exists(LOCAL_QUESTIONS_DIR):
+        os.makedirs(LOCAL_QUESTIONS_DIR)
+
+ensure_local_questions_dir_exists()
+
+def save_question_locally(question_id, question_data):
+    """Save question data to a local JSON file."""
+    filepath = os.path.join(LOCAL_QUESTIONS_DIR, f"question_{question_id}.json")
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(question_data, f, indent=4)
+        print(f"Question ID {question_id} saved locally to {filepath}")
+        return True
+    except Exception as e:
+        print(f"Error saving question ID {question_id} locally: {e}")
+        return False
+
+def load_question_locally(question_id):
+    """Load question data from a local JSON file."""
+    filepath = os.path.join(LOCAL_QUESTIONS_DIR, f"question_{question_id}.json")
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r') as f:
+                question_data = json.load(f)
+            print(f"Question ID {question_id} loaded from local file {filepath}")
+            return question_data
+        except json.JSONDecodeError as e:
+            print(f"JSON Decode Error loading local file for ID {question_id}: {e}")
+            return None
+        except Exception as e:
+            print(f"Error loading local file for question ID {question_id}: {e}")
+            return None
+    return None
+
+
 def fetch_question_by_id(question_id):
-    """Fetch a specific written question by its ID."""
+    """Fetch a specific written question by its ID, checking local cache first."""
+    local_data = load_question_locally(question_id)
+    if local_data:
+        return local_data
+
+    # Rate limit to 10 calls per second
+    time.sleep(0.1)  # 100ms delay between calls
+
     url = f"https://questions-statements-api.parliament.uk/api/writtenquestions/questions/{question_id}"
     response = requests.get(url)
     if response.status_code == 200:
         try:
             question_json_string = response.text
             question_data = json.loads(question_json_string)
+            save_question_locally(question_id, question_data) # Save question locally
             return question_data
         except json.JSONDecodeError as e:
             print(f"JSON Decode Error (ID {question_id}): {e}")
