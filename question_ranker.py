@@ -7,15 +7,17 @@ from google import genai
 from pydantic import BaseModel
 import time
 import csv
-from api_key import GEMINI_API_KEY
 import os  # Import os module for checkpoint file operations
+import asyncio  # Import asyncio for async calls
+from scipy.stats import percentileofscore  # Import scipy for percentile calculation
+from api_key import GEMINI_API_KEY
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # --------------------------
 # Get parlimentary questions
 
-requests_cache.install_cache('parliament_api_cache', expire_after=1000)  # Increased cache to 1000 seconds
+requests_cache.install_cache('parliament_api_cache', expire_after=None)
 
 def fetch_question_by_id(question_id):
     """Fetch a specific written question by its ID."""
@@ -87,7 +89,9 @@ def save_checkpoint(qa_pairs, comparison_count, filename=CHECKPOINT_FILE):
                 'question_text': qa_pair['question_text'],
                 'answer_text': qa_pair['answer_text'],
                 'elo_importance_rating': qa_pair['elo_importance_rating'],
-                'elo_attention_rating': qa_pair['elo_attention_rating']
+                'elo_attention_rating': qa_pair['elo_attention_rating'],
+                'percentile_importance_rank': qa_pair['percentile_importance_rank'], # Save percentile ranks
+                'percentile_attention_rank': qa_pair['percentile_attention_rank']  # Save percentile ranks
             } for qa_pair in qa_pairs
         ],
         "comparison_count": comparison_count
@@ -113,7 +117,9 @@ def load_checkpoint(filename=CHECKPOINT_FILE):
                     'question_text': qa_pair['question_text'],
                     'answer_text': qa_pair['answer_text'],
                     'elo_importance_rating': qa_pair['elo_importance_rating'],
-                    'elo_attention_rating': qa_pair['elo_attention_rating']
+                    'elo_attention_rating': qa_pair['elo_attention_rating'],
+                    'percentile_importance_rank': qa_pair.get('percentile_importance_rank', 0), # Load percentile ranks, default to 0 if not found for backward compatibility
+                    'percentile_attention_rank': qa_pair.get('percentile_attention_rank', 0)   # Load percentile ranks, default to 0 if not found for backward compatibility
                 } for qa_pair in checkpoint_data['qa_pairs']
             ]
             comparison_count_loaded = checkpoint_data.get("comparison_count", 0) # Default to 0 if not found for backward compatibility
@@ -130,38 +136,26 @@ def load_checkpoint(filename=CHECKPOINT_FILE):
 # ------------------------------
 # Rank questions
 
-def print_ranked_questions_and_answers(ranked_qa_pairs_importance, ranked_qa_pairs_attention):
-    """Print ranked question and answer pairs for both importance and attention."""
-    print("--- Ranked Question & Answer Pairs (Most Important to Least) ---")
-    for rank, qa_pair in enumerate(ranked_qa_pairs_importance, start=1):
-        print(f"Rank {rank}: UIN: {qa_pair['uin']}, Heading: {qa_pair['heading']}, Importance Elo Rating: {qa_pair['elo_importance_rating']:.2f}")
-        print(f"Question: {qa_pair['question_text']}")
-        print(f"Answer: {qa_pair['answer_text']}")
-        print("-" * 50)
-
-    print("\n--- Ranked Question & Answer Pairs (Most Attention to Least) ---")
-    for rank, qa_pair in enumerate(ranked_qa_pairs_attention, start=1):
-        print(f"Rank {rank}: UIN: {qa_pair['uin']}, Heading: {qa_pair['heading']}, Attention Elo Rating: {qa_pair['elo_attention_rating']:.2f}")
+def print_ranked_questions_and_answers(ranked_qa_pairs_unattended): # Changed to ranked_qa_pairs_unattended
+    """Print ranked question and answer pairs for unattended issues (most important, least attention)."""
+    print("--- Ranked Question & Answer Pairs (Most Important, Least Attention - Last in List) ---") # Updated title
+    for rank, qa_pair in enumerate(ranked_qa_pairs_unattended, start=1): # Changed to ranked_qa_pairs_unattended
+        print(f"Rank {rank}: UIN: {qa_pair['uin']}, Heading: {qa_pair['heading']}, Unattended Score: {qa_pair['unattended_score']:.2f} (Importance Pct Rank: {qa_pair['percentile_importance_rank']:.2f}, Attention Pct Rank: {qa_pair['percentile_attention_rank']:.2f})") # Updated print statement to include percentile ranks and unattended score
         print(f"Question: {qa_pair['question_text']}")
         print(f"Answer: {qa_pair['answer_text']}")
         print("-" * 50)
 
 
-def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
+
+async def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
     """
-    Evaluates which of the two question/answer pairs is more important and which is receiving more attention in Westminster.
+    Asynchronously evaluates which of the two question/answer pairs is more important and which is receiving more attention in Westminster.
     Uses a single LLM call to determine both importance and attention.
     """
     print(f"Comparison {comparison_index + 1}: Comparing for Importance and Attention:") # Added comparison index
     print(f"QA Pair 1: UIN: {qa_pair1['uin']}, Heading: {qa_pair1['heading']}")
     print(f"QA Pair 2: UIN: {qa_pair2['uin']}, Heading: {qa_pair2['heading']}")
 
-    # Rate limiting - wait 2 seconds between calls
-    if hasattr(eval_importance_attention, '_last_call'):
-        elapsed = time.time() - eval_importance_attention._last_call
-        if elapsed < 0.1:
-            time.sleep(0.1 - elapsed)
-    eval_importance_attention._last_call = time.time()
 
     # Make sure to not use up all of our input tokens
     MAX_LENGTH = 10_000
@@ -196,7 +190,7 @@ def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
     {qa_pair2['answer_text']}
     """
 
-    response = gemini_client.models.generate_content(
+    response = await gemini_client.models.generate_content_async( # Made async
         model='gemini-2.0-flash-lite',
         contents=contents,
         config={
@@ -266,45 +260,53 @@ def initialize_elo_ratings(qa_pairs, initial_rating=1500):
     for qa_pair in qa_pairs:
         qa_pair['elo_importance_rating'] = initial_rating
         qa_pair['elo_attention_rating'] = initial_rating
+        qa_pair['percentile_importance_rank'] = 0 # Initialize percentile ranks
+        qa_pair['percentile_attention_rank'] = 0  # Initialize percentile ranks
+        qa_pair['unattended_score'] = 0 # Initialize unattended score
 
 
-def rank_qa_pairs_elo(qa_pairs, rating_type='importance'):
-    """Rank QA pairs based on Elo ratings in descending order.
-    Rating type can be 'importance' or 'attention'."""
-    if rating_type == 'importance':
-        return sorted(qa_pairs, key=lambda qa_pair: qa_pair['elo_importance_rating'], reverse=True)
-    elif rating_type == 'attention':
-        return sorted(qa_pairs, key=lambda qa_pair: qa_pair['elo_attention_rating'], reverse=True)
-    else:
-        raise ValueError("rating_type must be 'importance' or 'attention'")
+def calculate_percentile_ranks(qa_pairs):
+    """Calculate percentile ranks for importance and attention Elo ratings."""
+    importance_ratings = [qa_pair['elo_importance_rating'] for qa_pair in qa_pairs]
+    attention_ratings = [qa_pair['elo_attention_rating'] for qa_pair in qa_pairs]
+
+    for qa_pair in qa_pairs:
+        qa_pair['percentile_importance_rank'] = percentileofscore(importance_ratings, qa_pair['elo_importance_rating'])
+        qa_pair['percentile_attention_rank'] = percentileofscore(attention_ratings, qa_pair['elo_attention_rating'])
+
+def calculate_unattended_score(qa_pairs):
+    """Calculate unattended score based on percentile ranks (Attention - Importance)."""
+    for qa_pair in qa_pairs:
+        qa_pair['unattended_score'] = qa_pair['percentile_attention_rank'] - qa_pair['percentile_importance_rank'] # Attention - Importance for "most important/least attention LAST"
 
 
-def save_ranked_qa_to_csv(ranked_qa_pairs_importance, ranked_qa_pairs_attention, filename=None):
-    """Save ranked question-answer pairs to a CSV file with timestamp, including both importance and attention ranks."""
+def rank_qa_pairs_unattended(qa_pairs): # New function to rank by unattended score
+    """Rank QA pairs based on unattended score (percentile rank of attention - percentile rank of importance), in ascending order so most important/least attention is last.""" # Changed to ascending order
+    return sorted(qa_pairs, key=lambda qa_pair: qa_pair['unattended_score'], reverse=False) # Sort in ascending order
+
+
+def save_ranked_qa_to_csv(ranked_qa_pairs_unattended, filename=None): # Changed to ranked_qa_pairs_unattended
+    """Save ranked question-answer pairs to a CSV file with timestamp, including unattended rank and score."""
     if filename is None:
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        filename = f"ranked_qa_pairs_dual_elo_{timestamp}.csv"
+        filename = f"ranked_qa_pairs_unattended_{timestamp}.csv" # Updated filename
 
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['rank_importance', 'question', 'answer', 'elo_importance_rating', 'rank_attention', 'elo_attention_rating', 'question_id']
+            fieldnames = ['rank_unattended', 'question', 'answer', 'elo_importance_rating', 'elo_attention_rating', 'percentile_importance_rank', 'percentile_attention_rank', 'unattended_score', 'question_id'] # Added percentile ranks and unattended score
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
-            for rank_importance, qa_pair in enumerate(ranked_qa_pairs_importance, 1):
-                rank_attention = 0  # Placeholder, find rank in attention list
-                for r_att, qa_pair_att in enumerate(ranked_qa_pairs_attention, 1):
-                    if qa_pair['id'] == qa_pair_att['id']:
-                        rank_attention = r_att
-                        break
-
+            for rank_unattended, qa_pair in enumerate(ranked_qa_pairs_unattended, 1): # Changed to ranked_qa_pairs_unattended
                 writer.writerow({
-                    'rank_importance': rank_importance,
+                    'rank_unattended': rank_unattended, # Changed to rank_unattended
                     'question': qa_pair['question_text'],
                     'answer': qa_pair['answer_text'],
                     'elo_importance_rating': qa_pair['elo_importance_rating'],
-                    'rank_attention': rank_attention,
                     'elo_attention_rating': qa_pair['elo_attention_rating'],
+                    'percentile_importance_rank': qa_pair['percentile_importance_rank'], # Save percentile ranks
+                    'percentile_attention_rank': qa_pair['percentile_attention_rank'], # Save percentile ranks
+                    'unattended_score': qa_pair['unattended_score'], # Save unattended score
                     'question_id': qa_pair['id']
                 })
         print(f"Successfully saved ranked Q&A pairs to {filename}")
@@ -371,8 +373,8 @@ def select_elo_based_pair(qa_pairs, comparison_count, num_comparisons):
 
 
 
-def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons=50):  # Added num_comparisons
-    """Fetch, rank using Elo for importance and attention, and print Q&A for answered questions in the last day."""
+async def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons=50, batch_size=20):  # Added num_comparisons and batch_size
+    """Fetch, rank using Elo for importance and attention, and print Q&A for answered questions in the last day, using async LLM calls in batches."""
     today = date.today()
     n_days = 30
     end_date = today - timedelta(days=1)
@@ -395,7 +397,8 @@ def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons
 
         qa_pairs = []
         print(f"Fetching details for {len(question_ids)} questions...")
-        for question_id in question_ids:
+        total_questions = len(question_ids)
+        for i, question_id in enumerate(question_ids): # Added enumerate for progress bar
             question_data = fetch_question_by_id(question_id)
             if question_data:
                 qa_pair = get_qa_pair_from_data(question_data)
@@ -404,6 +407,12 @@ def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons
             else:
                 print(f"Failed to fetch full data for question ID: {question_id}")
 
+            # Progress bar implementation
+            progress = (i + 1) / total_questions * 100
+            print(f"Downloading questions: {progress:.2f}% ({i + 1}/{total_questions})", end='\r') # \r to overwrite the line
+
+        print("\n") # New line after progress bar completes
+
         if not qa_pairs:
             print("No valid question/answer pairs fetched.")
             return
@@ -411,7 +420,9 @@ def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons
         initialize_elo_ratings(qa_pairs)  # Initialize Elo ratings for importance and attention
         save_checkpoint(qa_pairs, comparison_count_start) # Save initial state after fetching and initializing
 
-    print(f"Performing {num_comparisons} comparisons to rank importance and attention...")  # Indicate comparisons
+    print(f"Performing {num_comparisons} comparisons in batches of {batch_size} to rank importance and attention...")  # Indicate comparisons
+
+    comparison_tasks = [] # List to hold async tasks
 
     for comparison_count in range(comparison_count_start, num_comparisons): # Iterate through comparisons and track count
         pair1, pair2 = select_elo_based_pair(qa_pairs, comparison_count, num_comparisons) # Select pair based on Elo
@@ -420,19 +431,25 @@ def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons
             print("Not enough pairs left to compare.")
             break # Exit loop if no pairs are available
 
-        winner_pair_importance, winner_pair_attention = eval_importance_attention(pair1, pair2, comparison_count)  # Determine both importance and attention in one call # Pass comparison count
+        comparison_tasks.append(eval_importance_attention(pair1, pair2, comparison_count)) # Append async task
 
-        update_elo_ratings(pair1, pair2, winner_pair_importance, winner_pair_attention)  # Update Elo ratings for both
+        if len(comparison_tasks) >= batch_size or comparison_count == num_comparisons - 1: # Process batch or last comparison
+            evaluation_results = await asyncio.gather(*comparison_tasks) # Run batch of tasks concurrently
+            for task_index, (winner_pair_importance, winner_pair_attention) in enumerate(evaluation_results): # Process results
+                pair1_batch, pair2_batch = select_elo_based_pair(qa_pairs, comparison_count_start + task_index, num_comparisons) # Re-select pairs - simplification, see comment in function
+                if pair1_batch and pair2_batch and winner_pair_importance and winner_pair_attention: # Check pairs are valid before updating
+                    update_elo_ratings(pair1_batch, pair2_batch, winner_pair_importance, winner_pair_attention)  # Update Elo ratings for both
+            comparison_tasks = [] # Clear tasks for next batch
+            save_checkpoint(qa_pairs, comparison_count + 1) # Save checkpoint after each batch
 
-        save_checkpoint(qa_pairs, comparison_count + 1) # Save checkpoint after each comparison
+    calculate_percentile_ranks(qa_pairs) # Calculate percentile ranks for all QA pairs
+    calculate_unattended_score(qa_pairs) # Calculate unattended score
+    ranked_qa_pairs_unattended = rank_qa_pairs_unattended(qa_pairs)  # Rank based on Unattended Score (ascending) # Changed to ranked_qa_pairs_unattended
 
-    ranked_qa_pairs_importance = rank_qa_pairs_elo(qa_pairs, rating_type='importance')  # Rank based on Importance Elo
-    ranked_qa_pairs_attention = rank_qa_pairs_elo(qa_pairs, rating_type='attention')  # Rank based on Attention Elo
-
-    print_ranked_questions_and_answers(ranked_qa_pairs_importance, ranked_qa_pairs_attention)  # Print ranked list for both
+    print_ranked_questions_and_answers(ranked_qa_pairs_unattended)  # Print ranked list for unattended issues # Changed to ranked_qa_pairs_unattended
 
     # After ranking, save to CSV
-    save_ranked_qa_to_csv(ranked_qa_pairs_importance, ranked_qa_pairs_attention)
+    save_ranked_qa_to_csv(ranked_qa_pairs_unattended) # Changed to ranked_qa_pairs_unattended
 
     # Clean up checkpoint file after successful run
     if os.path.exists(CHECKPOINT_FILE):
@@ -441,4 +458,4 @@ def get_answered_questions_last_day_elo_ranked(num_questions=20, num_comparisons
 
 
 if __name__ == "__main__":
-    get_answered_questions_last_day_elo_ranked(num_questions=100, num_comparisons=500)  # Adjusted to pass num_comparisons
+    asyncio.run(get_answered_questions_last_day_elo_ranked(num_questions=1000, num_comparisons=5000, batch_size=100))  # Adjusted to pass num_comparisons and batch_size
