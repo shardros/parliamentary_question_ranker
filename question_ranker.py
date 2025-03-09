@@ -247,9 +247,9 @@ def eval_importance_attention(qa_pair1, qa_pair2, comparison_index):
     explanation_importance: The explaination of which is more important 75 words max.
     important_q_num: The number either 1 or 2 which question is more important
 
-    For Attention: Which issue is not receiving enough focus in Westminster?
-    explanation_attention: The explaination of which isn't receiving enough attention 75 words max.
-    attention_q_num: The number either 1 or 2 which question is receiving **enough** focus
+    For Attention: Which issue is receiving enough focus in Westminster?
+    explanation_attention: The explaination of which is receiving enough attention 75 words max.
+    attention_q_num: The number either 1 or 2 which question is receiving enough focus
 
     --- 1 ---
     {qa_pair1['heading']}
