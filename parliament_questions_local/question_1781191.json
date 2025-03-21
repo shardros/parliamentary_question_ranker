@@ -1,0 +1,41 @@
+{
+    "value": {
+        "id": 1781191,
+        "askingMemberId": 5325,
+        "askingMember": null,
+        "house": "Commons",
+        "memberHasInterest": false,
+        "dateTabled": "2025-03-04T00:00:00",
+        "dateForAnswer": "2025-03-06T00:00:00",
+        "uin": "35566",
+        "questionText": "To ask the Secretary of State for Environment, Food and Rural Affairs, what recent assessment his Department has made of the potential implications for his policies of (a) the inequality of access to nature in England and (b) that a fifth of English constituencies have no Right to Roam at all.",
+        "answeringBodyId": 13,
+        "answeringBodyName": "Department for Environment, Food and Rural Affairs",
+        "isWithdrawn": false,
+        "isNamedDay": false,
+        "groupedQuestions": [],
+        "answerIsHolding": false,
+        "answerIsCorrection": true,
+        "answeringMemberId": 1579,
+        "answeringMember": null,
+        "correctingMemberId": 1579,
+        "correctingMember": null,
+        "dateAnswered": "2025-03-19T00:00:00",
+        "answerText": "<p>The Government recognises the importance of providing access to the outdoors for people\u2019s health and wellbeing and are working to ensure this is safe and appropriate. We also recognise that access to nature is currently inequitable across England, with some groups such as those from lower socio-economic backgrounds particularly disadvantaged. This is why we committed in our Environmental Improvement Plan to work across government to help ensure that everyone lives within 15 minutes\u2019 walk of a green or blue space, and to reduce barriers to access. We are already taking forward initiatives to help us deliver this, including new initiatives such as the river walks and national forests manifesto commitments and existing initiatives such as completing the King Charles III England Coast Path and upgrading the Coast to Coast trail across the north of England.</p><p> </p><p>The last Labour Government introduced the Countryside and Rights of Way Act 2000, which provides the public a right of access to large parts of the English countryside. The 8% figure of publicly accessible land does not include the thousands of green spaces (e.g. parks) that are available to the public. Most of the nation's forests managed by Forestry England  (more than 253,000 hectares)  have been dedicated as open access land.</p>",
+        "originalAnswerText": "<p>The Government recognises the importance of providing access to the outdoors for people\u2019s health and wellbeing and are working to ensure this is safe and appropriate. We also recognise that access to nature is currently inequitable across England, with some groups such as those from lower socio-economic backgrounds particularly disadvantaged. This is why we committed in our Environmental Improvement Plan to work across government to help ensure that everyone lives within 15 minutes\u2019 walk of a green or blue space, and to reduce barriers to access. We are already taking forward initiatives to help us deliver this, including new initiatives such as the river walks and national forests manifesto commitments and existing initiatives such as completing the King Charles III England Coast Path and upgrading the Coast to Coast trail across the north of England.</p><p> </p><p>The last Labour Government introduced the Countryside and Rights of Way Act 2000, which provides the public a right of access to large parts of the English countryside. The 8% figure of publicly accessible land does not include the thousands of green spaces (e.g. parks) that are available to the public. Most of the  Public Forest Estate (around 258,000 hectares) in England Nation\u2019s Forests managed by Forestry England, has  been dedicated as open access land.</p>",
+        "comparableAnswerText": "<p>The Government recognises the importance of providing access to the outdoors for people\u2019s health and wellbeing and are working to ensure this is safe and appropriate. We also recognise that access to nature is currently inequitable across England, with some groups such as those from lower socio-economic backgrounds particularly disadvantaged. This is why we committed in our Environmental Improvement Plan to work across government to help ensure that everyone lives within 15 minutes\u2019 walk of a green or blue space, and to reduce barriers to access. We are already taking forward initiatives to help us deliver this, including new initiatives such as the river walks and national forests manifesto commitments and existing initiatives such as completing the King Charles III England Coast Path and upgrading the Coast to Coast trail across the north of England.</p><p> </p><p>The last Labour Government introduced the Countryside and Rights of Way Act 2000, which provides the public a right of access to large parts of the English countryside. The 8% figure of publicly accessible land does not include the thousands of green spaces (e.g. parks) that are available to the public. Most of the <ins class=\"ministerial\">nation's forests managed by Forestry England</ins> <del class=\"ministerial\">Public Forest Estate</del> (<ins class=\"ministerial\">more than 253,000</ins><del class=\"ministerial\">around 258,000</del> hectares) <del class=\"ministerial\">in England Nation\u2019s Forests managed by Forestry England, has</del> <ins class=\"ministerial\">have</ins> been dedicated as open access land.</p>",
+        "dateAnswerCorrected": "2025-03-21T00:00:00",
+        "dateHoldingAnswer": null,
+        "attachmentCount": 0,
+        "heading": "Rights of Way",
+        "attachments": [],
+        "groupedQuestionsDates": []
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "/Questions/1781191",
+            "method": "GET"
+        }
+    ]
+}

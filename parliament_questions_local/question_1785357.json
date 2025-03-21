@@ -1,0 +1,41 @@
+{
+    "value": {
+        "id": 1785357,
+        "askingMemberId": 5283,
+        "askingMember": null,
+        "house": "Commons",
+        "memberHasInterest": false,
+        "dateTabled": "2025-03-17T00:00:00",
+        "dateForAnswer": "2025-03-20T00:00:00",
+        "uin": "38820",
+        "questionText": "To ask the Secretary of State for Health and Social Care, what steps his Department is taking to ensure that retailers (a) provide (i) clear, (ii) accurate and (iii) impartial information on the nutritional sufficiency of infant formula products in (A) retail outlets and (B) online shopping channels and (b) display brands of infant formula together on retail shelves.",
+        "answeringBodyId": 17,
+        "answeringBodyName": "Department of Health and Social Care",
+        "isWithdrawn": false,
+        "isNamedDay": true,
+        "groupedQuestions": [],
+        "answerIsHolding": false,
+        "answerIsCorrection": false,
+        "answeringMemberId": 4981,
+        "answeringMember": null,
+        "correctingMemberId": null,
+        "correctingMember": null,
+        "dateAnswered": "2025-03-20T00:00:00",
+        "answerText": "<p>Infant feeding is critical to a baby\u2019s healthy growth and development. The Government is committed to giving every child the best start in life and that includes helping families to access support to feed their baby.</p><p>Whilst breastfeeding has significant health benefits, we recognise that for those families that cannot or choose not to breastfeed, it is vital that they have access to infant formula that is affordable and high quality. Infant formula regulations ensure that all infant formula is suitable for meeting the nutritional needs of babies, regardless of the price or brand.</p><p>The Government welcomes the Competition and Markets Authority\u2019s market study report on infant formula and follow-on formula. The report included recommendations related to clear, accurate and impartial information on the nutritional sufficiency of all infant formula products on product labelling and in retail settings as well as a recommendation related to displaying all brands of infant formula together and separate from other formula milks. We will carefully consider its findings and recommendations and respond in due course.</p>",
+        "originalAnswerText": "",
+        "comparableAnswerText": "",
+        "dateAnswerCorrected": null,
+        "dateHoldingAnswer": null,
+        "attachmentCount": 0,
+        "heading": "Infant Foods: Labelling",
+        "attachments": [],
+        "groupedQuestionsDates": []
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "/Questions/1785357",
+            "method": "GET"
+        }
+    ]
+}

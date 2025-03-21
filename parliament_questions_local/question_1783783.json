@@ -1,0 +1,41 @@
+{
+    "value": {
+        "id": 1783783,
+        "askingMemberId": 4519,
+        "askingMember": null,
+        "house": "Commons",
+        "memberHasInterest": false,
+        "dateTabled": "2025-03-12T00:00:00",
+        "dateForAnswer": "2025-03-14T00:00:00",
+        "uin": "37596",
+        "questionText": "To ask the Secretary of State for Defence, how many 5.56mm rounds have been (a) lost or (b) stolen from his Department\u2019s facilities since 5 July 2024.",
+        "answeringBodyId": 11,
+        "answeringBodyName": "Ministry of Defence",
+        "isWithdrawn": false,
+        "isNamedDay": false,
+        "groupedQuestions": [],
+        "answerIsHolding": false,
+        "answerIsCorrection": true,
+        "answeringMemberId": 4682,
+        "answeringMember": null,
+        "correctingMemberId": 4682,
+        "correctingMember": null,
+        "dateAnswered": "2025-03-20T00:00:00",
+        "answerText": "<p>The security of ammunition is taken very seriously within the Ministry of Defence (MOD), and we have robust procedures in place to deter, detect and prevent loss and theft. All losses and thefts are fully and rigorously investigated.</p><p>No ammunition has been reported stolen during that period.</p><p>The below table details 5.56mm, 7.62mm, 9mm, 4.6mm, 12.7mm and .22 inch ammunition lost from MOD Facilities from 5 July 2024 until 28 February 2025. This includes military establishments, ranges, training areas and on operations.</p><p>Of the 203 7.62mm ammunition rounds detailed in the table, 200 were lost overboard in the Solent from a Navy vessel</p><table><tbody><tr><td><p><strong>Ammunition</strong></p></td><td><p><strong>Lost since 5 Jul 2024 \u2013 28 Feb 25 </strong></p></td></tr><tr><td><p>5.56mm</p></td><td><p>33</p></td></tr><tr><td><p>7.62mm</p></td><td><p>203</p></td></tr><tr><td><p>9mm</p></td><td><p>18 (15 subsequently found)</p></td></tr><tr><td><p>4.6mm</p></td><td><p>0</p></td></tr><tr><td><p>12.7mm</p></td><td><p>0</p></td></tr><tr><td><p>.22 inch</p></td><td><p>0</p></td></tr></tbody></table><p> </p>",
+        "originalAnswerText": "<p>The security of ammunition is taken very seriously within the Ministry of Defence (MOD), and we have robust procedures in place to deter, detect and prevent loss and theft. All losses and thefts are fully and rigorously investigated.</p><p>No ammunition has been reported stolen during that period.</p><p>The below table details 5.56mm, 7.62mm, 9mm, 4.6mm, 12.7mm and .22 inch ammunition lost from MOD Facilities from 5 July 2024 until 28 February 2025. This includes military establishments, ranges, training areas and on operations.</p><p>Of the 203 7.62mm ammunition rounds detailed in the table, 200 were lost overboard in the Solent from a Navy vessel</p><table><tbody><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr><tr><td><p></p></td><td><p></p></td></tr></tbody></table><p> </p>",
+        "comparableAnswerText": "<p>The security of ammunition is taken very seriously within the Ministry of Defence (MOD), and we have robust procedures in place to deter, detect and prevent loss and theft. All losses and thefts are fully and rigorously investigated.</p><p>No ammunition has been reported stolen during that period.</p><p>The below table details 5.56mm, 7.62mm, 9mm, 4.6mm, 12.7mm and .22 inch ammunition lost from MOD Facilities from 5 July 2024 until 28 February 2025. This includes military establishments, ranges, training areas and on operations.</p><p>Of the 203 7.62mm ammunition rounds detailed in the table, 200 were lost overboard in the Solent from a Navy vessel</p><table><tbody><tr><td><p><ins class=\"ministerial\"><strong>Ammunition</strong></ins></p></td><td><p><ins class=\"ministerial\"><strong>Lost since 5 Jul 2024 \u2013 28 Feb 25 </strong></ins></p></td></tr><tr><td><p><ins class=\"ministerial\">5.56mm</ins></p></td><td><p><ins class=\"ministerial\">33</ins></p></td></tr><tr><td><p><ins class=\"ministerial\">7.62mm</ins></p></td><td><p><ins class=\"ministerial\">203</ins></p></td></tr><tr><td><p><ins class=\"ministerial\">9mm</ins></p></td><td><p><ins class=\"ministerial\">18 (15 subsequently found)</ins></p></td></tr><tr><td><p><ins class=\"ministerial\">4.6mm</ins></p></td><td><p><ins class=\"ministerial\">0</ins></p></td></tr><tr><td><p><ins class=\"ministerial\">12.7mm</ins></p></td><td><p><ins class=\"ministerial\">0</ins></p></td></tr><tr><td><p><ins class=\"ministerial\">.22 inch</ins></p></td><td><p><ins class=\"ministerial\">0</ins></p></td></tr></tbody></table><p> </p>",
+        "dateAnswerCorrected": "2025-03-21T00:00:00",
+        "dateHoldingAnswer": null,
+        "attachmentCount": 0,
+        "heading": "Ammunition: Lost Property and Theft",
+        "attachments": [],
+        "groupedQuestionsDates": []
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "/Questions/1783783",
+            "method": "GET"
+        }
+    ]
+}

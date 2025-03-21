@@ -1,0 +1,41 @@
+{
+    "value": {
+        "id": 1785135,
+        "askingMemberId": 3973,
+        "askingMember": null,
+        "house": "Commons",
+        "memberHasInterest": false,
+        "dateTabled": "2025-03-17T00:00:00",
+        "dateForAnswer": "2025-03-20T00:00:00",
+        "uin": "38566",
+        "questionText": "To ask the Secretary of State for Health and Social Care, whether he plans to (a) decentralise the commissioning of radiotherapy and (b) give English regions more control over (i) treatment pathways and (ii) new radiotherapy technologies.",
+        "answeringBodyId": 17,
+        "answeringBodyName": "Department of Health and Social Care",
+        "isWithdrawn": false,
+        "isNamedDay": true,
+        "groupedQuestions": [],
+        "answerIsHolding": false,
+        "answerIsCorrection": false,
+        "answeringMemberId": 4981,
+        "answeringMember": null,
+        "correctingMemberId": null,
+        "correctingMember": null,
+        "dateAnswered": "2025-03-20T00:00:00",
+        "answerText": "<p>The Government is investing \u00a370 million of central funding to replace radiotherapy machines, to ensure the most advanced treatment is available to patients who need it, however since April 2022, the responsibility for investing in new radiotherapy machines has been with local systems.</p><p>The National Cancer Plan will include further details on how we will improve outcomes for cancer patients, including those undergoing radiotherapy treatment, ensuring patients have access to the latest treatments and technology.</p>",
+        "originalAnswerText": "",
+        "comparableAnswerText": "",
+        "dateAnswerCorrected": null,
+        "dateHoldingAnswer": null,
+        "attachmentCount": 0,
+        "heading": "Radiotherapy",
+        "attachments": [],
+        "groupedQuestionsDates": []
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "/Questions/1785135",
+            "method": "GET"
+        }
+    ]
+}
